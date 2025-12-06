@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Clinical API MVP</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h2 { margin-top: 40px; }
+    label { display: block; margin-top: 8px; }
+    input { padding: 4px; margin-top: 2px; }
+    button { margin-top: 10px; padding: 6px 10px; }
+    .box { border: 1px solid #ccc; padding: 15px; margin-top: 10px; }
+    pre { background: #f5f5f5; padding: 10px; max-height: 200px; overflow-y: auto; }
+  </style>
+</head>
+<body>
+  <h1>Clinical Encounter & Documentation API (MVP)</h1>
+
+  <p>
+    This is a super simple frontend that talks to the Node/Express API using <code>fetch</code>.
+    Use it to quickly test your endpoints in the browser.
+  </p>
+
+  <!-- USERS SECTION -->
+  <div class="box">
+    <h2>Users</h2>
+    <button id="btnLoadUsers">Load Users</button>
+    <pre id="usersOutput">No users loaded yet.</pre>
+
+    <h3>Create User</h3>
+    <label>Name <input id="userName" /></label>
+    <label>Email <input id="userEmail" /></label>
+    <label>Password <input id="userPassword" type="password" /></label>
+    <label>Role
+      <select id="userRole">
+        <option value="provider">provider</option>
+        <option value="scribe">scribe</option>
+        <option value="biller">biller</option>
+        <option value="admin">admin</option>
+      </select>
+    </label>
+    <button id="btnCreateUser">Create User</button>
+  </div>
+
+  <!-- PATIENTS SECTION -->
+  <div class="box">
+    <h2>Patients</h2>
+    <button id="btnLoadPatients">Load Patients</button>
+    <pre id="patientsOutput">No patients loaded yet.</pre>
+
+    <h3>Create Patient</h3>
+    <label>MRN <input id="patientMrn" /></label>
+    <label>Name <input id="patientName" /></label>
+    <label>DOB (YYYY-MM-DD) <input id="patientDob" /></label>
+    <label>Phone <input id="patientPhone" /></label>
+    <label>Email <input id="patientEmail" /></label>
+    <button id="btnCreatePatient">Create Patient</button>
+  </div>
+
+  <!-- ENCOUNTERS SECTION -->
+  <div class="box">
+    <h2>Encounters</h2>
+    <button id="btnLoadEncounters">Load Encounters</button>
+    <pre id="encountersOutput">No encounters loaded yet.</pre>
+
+    <h3>Create Encounter</h3>
+    <p>Hint: first create a User with role "provider" and a Patient, then use their IDs.</p>
+    <label>Patient ID <input id="encPatientId" /></label>
+    <label>Provider ID <input id="encProviderId" /></label>
+    <label>Chief Complaint <input id="encChiefComplaint" /></label>
+    <button id="btnCreateEncounter">Create Encounter (Draft)</button>
+  </div>
+
+  <script>
+    // Helper: simple function to make GET/POST requests and show errors in console
+    async function apiRequest(url, options = {}) {
+      const res = await fetch(url, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        ...options,
+      });
+      // If server returns 204 (no content), just return null
+      if (res.status === 204) return null;
+      const data = await res.json();
+      if (!res.ok) {
+        console.error('API error:', data);
+        alert('Error: ' + (data.error || 'See console'));
+      }
+      return data;
+    }
+
+    // USERS
+    document.getElementById('btnLoadUsers').addEventListener('click', async () => {
+      const data = await apiRequest('/api/users');
+      if (data) {
+        document.getElementById('usersOutput').textContent = JSON.stringify(data, null, 2);
+      }
+    });
+
+    document.getElementById('btnCreateUser').addEventListener('click', async () => {
+      const name = document.getElementById('userName').value;
+      const email = document.getElementById('userEmail').value;
+      const password = document.getElementById('userPassword').value;
+      const role = document.getElementById('userRole').value;
+
+      const data = await apiRequest('/api/users', {
+        method: 'POST',
+        body: JSON.stringify({ name, email, password, role }),
+      });
+
+      if (data) {
+        alert('User created with ID ' + data.id);
+      }
+    });
+
+    // PATIENTS
+    document.getElementById('btnLoadPatients').addEventListener('click', async () => {
+      const data = await apiRequest('/api/patients');
+      if (data) {
+        document.getElementById('patientsOutput').textContent = JSON.stringify(data, null, 2);
+      }
+    });
+
+    document.getElementById('btnCreatePatient').addEventListener('click', async () => {
+      const mrn = document.getElementById('patientMrn').value;
+      const name = document.getElementById('patientName').value;
+      const dob = document.getElementById('patientDob').value;
+      const phone = document.getElementById('patientPhone').value;
+      const email = document.getElementById('patientEmail').value;
+
+      const data = await apiRequest('/api/patients', {
+        method: 'POST',
+        body: JSON.stringify({ mrn, name, dob, phone, email }),
+      });
+
+      if (data) {
+        alert('Patient created with ID ' + data.id);
+      }
+    });
+
+    // ENCOUNTERS
+    document.getElementById('btnLoadEncounters').addEventListener('click', async () => {
+      const data = await apiRequest('/api/encounters');
+      if (data) {
+        document.getElementById('encountersOutput').textContent = JSON.stringify(data, null, 2);
+      }
+    });
+
+    document.getElementById('btnCreateEncounter').addEventListener('click', async () => {
+      const patientId = parseInt(document.getElementById('encPatientId').value, 10);
+      const providerId = parseInt(document.getElementById('encProviderId').value, 10);
+      const chiefComplaint = document.getElementById('encChiefComplaint').value;
+
+      const data = await apiRequest('/api/encounters', {
+        method: 'POST',
+        body: JSON.stringify({ patientId, providerId, chiefComplaint }),
+      });
+
+      if (data) {
+        alert('Encounter created with ID ' + data.id);
+      }
+    });
+  </script>
+</body>
+</html>
