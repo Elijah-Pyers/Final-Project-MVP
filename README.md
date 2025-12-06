@@ -479,9 +479,7 @@ npm test
 
 ---
 
-## Suggested Project Structure (Reference)
-
-Your structure may vary, but this is a clean MVP layout that matches the configuration described above:
+## Project Structure 
 
 ```
 Final-Project-MVP/
