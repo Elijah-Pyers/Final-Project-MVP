@@ -2,7 +2,7 @@
 
 This project provides a backend REST API for a small clinic workflow system. It manages **Users**, **Patients**, and **Encounters**, giving clinics a structured and predictable way to document patient visits.
 
-The MVP focuses on core backend skills: relational data modeling, RESTful CRUD endpoints, error handling, and basic automated tests.
+The MVP focuses on core backend skills: relational data modeling, RESTful CRUD endpoints, meaningful error handling, and basic automated tests.
 
 ## Tech Stack
 
@@ -43,7 +43,7 @@ Your `db.js` should resolve these from the project root (e.g., `path.join(__dirn
 
 - Node.js (v18+ recommended)
 - npm
-- Postman 
+- Postman (optional but recommended)
 
 ### 1. Install Dependencies
 
@@ -453,7 +453,7 @@ This project includes a Postman collection with example requests for:
 http://localhost:3000
 ```
 
- Postman collection should include example request bodies for **POST** and **PUT** endpoints and demonstrate expected responses for both success and error cases.
+Your Postman collection should include example request bodies for **POST** and **PUT** endpoints and demonstrate expected responses for both success and error cases.
 
 ---
 
