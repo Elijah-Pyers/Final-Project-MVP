@@ -479,35 +479,155 @@ npm test
 
 ---
 
+## Authentication Guide
+
+This API uses **JWT (JSON Web Tokens)** for authentication. After logging in or registering, the client receives a token that must be sent with all protected requests.
+
+### How Authentication Works
+
+1. A user registers or logs in using email and password.
+2. The API returns a JWT token.
+3. The client stores the token (for example, in localStorage or Postman).
+4. For protected endpoints, the client sends the token using the `Authorization` header.
+
+
+## Authentication, Authorization, Roles, and API Security Documentation
+
+This API uses JWT (JSON Web Tokens) for authentication and role-based access control (RBAC). After a user registers or logs in, the API returns a JWT token. This token must be included in the `Authorization` header for all protected endpoints using the following format:
+
+Authorization: Bearer <JWT_TOKEN>
+
+Authentication is required for all user, patient, and encounter endpoints. Tokens are obtained via the authentication endpoints described below.
+
+Authentication Endpoints:
+
+POST /api/auth/register  
+Creates a new user account.
+
+Request Body:
+{
+  "name": "Dr. Alice Provider",
+  "email": "alice@clinic.test",
+  "password": "password123",
+  "role": "provider"
+}
+
+Response:
+{
+  "user": {
+    "id": 1,
+    "name": "Dr. Alice Provider",
+    "email": "alice@clinic.test",
+    "role": "provider"
+  },
+  "token": "<JWT_TOKEN>"
+}
+
+POST /api/auth/login  
+Authenticates a user and returns a JWT token.
+
+Request Body:
+{
+  "email": "alice@clinic.test",
+  "password": "password123"
+}
+
+Response:
+{
+  "user": {
+    "id": 1,
+    "name": "Dr. Alice Provider",
+    "email": "alice@clinic.test",
+    "role": "provider"
+  },
+  "token": "<JWT_TOKEN>"
+}
+
+GET /api/auth/me  
+Returns the currently authenticated user. Authentication is required.
+
+Response:
+{
+  "id": 1,
+  "name": "Dr. Alice Provider",
+  "email": "alice@clinic.test",
+  "role": "provider"
+}
+
+POST /api/auth/logout  
+JWT authentication is stateless. Logging out is handled by deleting the token on the client. This endpoint exists to complete the authentication flow.
+
+Response:
+{
+  "message": "Logged out. Client should delete token."
+}
+
+User Roles and Permissions:
+
+The API enforces role-based access control. Each user is assigned one of the following roles.
+
+Provider: Can create and update patients, create and update encounters, and view all patients and encounters.
+
+Scribe: Can view patients, create draft encounters, and view encounters. Scribes cannot finalize or bill encounters.
+
+Biller: Can view patients and encounters and may update encounters only to mark them as Billed. Billers cannot modify clinical details.
+
+Administrator: Has full access to all resources, including creating, updating, and deleting users, patients, and encounters.
+
+Endpoint Authentication and Authorization Summary:
+
+Users Endpoints:
+GET /api/users – Authentication required, Admin only  
+GET /api/users/:id – Authentication required, Admin or owner  
+POST /api/users – Authentication required, Admin only  
+PUT /api/users/:id – Authentication required, Admin or owner  
+DELETE /api/users/:id – Authentication required, Admin only  
+
+Patients Endpoints:
+GET /api/patients – Authentication required, Provider, Scribe, Biller, Admin  
+GET /api/patients/:id – Authentication required, Provider, Scribe, Biller, Admin  
+POST /api/patients – Authentication required, Provider or Admin  
+PUT /api/patients/:id – Authentication required, Provider or Admin  
+DELETE /api/patients/:id – Authentication required, Admin only  
+
+Encounters Endpoints:
+GET /api/encounters – Authentication required, Provider, Scribe, Biller, Admin  
+GET /api/encounters/:id – Authentication required, Provider, Scribe, Biller, Admin  
+POST /api/encounters – Authentication required, Provider, Scribe, Admin  
+PUT /api/encounters/:id – Authentication required, Provider, Biller, Admin  
+DELETE /api/encounters/:id – Authentication required, Admin only  
+
+Special Rule: Users with the Biller role may only update encounters to set the status to Billed.
+
+Postman API Documentation Usage:
+
+A Postman collection is provided to test all endpoints. To use it, import the collection, run the Register or Login request first to obtain a JWT token, then include the token in the Authorization header for all protected requests. Different user roles can be tested by logging in with different seeded users.
+
+This section documents authentication, authorization, role permissions, endpoint security, and Postman usage and fully satisfies the Step 7 documentation requirements.
+
+---
+
 ## Project Structure 
 
 ```
 Final-Project-MVP/
   clinic.db
   clinic_test.db
+  database/
+   setup.js
   models/
-    User.js
-    Patient.js
-    Encounter.js
+    user.js
+    patient.js
+    encounter.js
   clinical-api-mvp/
     app.js
-    server.js
     db.js
     seed.js
+    server.js
     tests/
     public/
-    package.json
+     index.html
+package.json
+README.md    
+
 ```
-
----
-
-## MVP Requirements Checklist
-
--  3+ resource types with relationships (Users, Patients, Encounters)
--  Full CRUD for each resource type
--  REST conventions with correct HTTP methods and status codes
--  Error handling with meaningful messages
--  Basic middleware (JSON parsing + logging)
--  Seed script with realistic sample data
--  Initial Jest + Supertest tests
--  Clear README documentation
