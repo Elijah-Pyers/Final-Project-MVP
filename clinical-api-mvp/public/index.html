@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Clinical API MVP</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h2 { margin-top: 40px; }
+    label { display: block; margin-top: 8px; }
+    input { padding: 4px; margin-top: 2px; }
+    button { margin-top: 10px; padding: 6px 10px; }
+    .box { border: 1px solid #ccc; padding: 15px; margin-top: 10px; }
+    pre { background: #f5f5f5; padding: 10px; max-height: 240px; overflow-y: auto; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .small { font-size: 12px; color: #444; }
+    code { background: #eee; padding: 2px 6px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Clinical Encounter & Documentation API (MVP)</h1>
+
+  <p>
+    This is a simple frontend that talks to the Node/Express API using <code>fetch</code>.
+    It supports login and sends <code>Authorization: Bearer &lt;token&gt;</code> for protected endpoints.
+  </p>
+
+  <!-- AUTH SECTION -->
+  <div class="box">
+    <h2>Authentication</h2>
+
+    <div class="row">
+      <div>
+        <label>Email <input id="loginEmail" placeholder="admin@clinic.test" /></label>
+      </div>
+      <div>
+        <label>Password <input id="loginPassword" type="password" placeholder="password123" /></label>
+      </div>
+    </div>
+
+    <div class="row">
+      <button id="btnLogin">Login</button>
+      <button id="btnLogout">Logout</button>
+      <button id="btnMe">Get Current User (/api/auth/me)</button>
+    </div>
+
+    <div class="small">
+      Token is stored in <code>localStorage</code> under key <code>token</code>.
+      Logout removes it client-side.
+    </div>
+
+    <pre id="authOutput">Not logged in.</pre>
+  </div>
+
+  <!-- USERS SECTION -->
+  <div class="box">
+    <h2>Users</h2>
+    <button id="btnLoadUsers">Load Users</button>
+    <pre id="usersOutput">No users loaded yet.</pre>
+
+    <h3>Create User (admin only)</h3>
+    <label>Name <input id="userName" /></label>
+    <label>Email <input id="userEmail" /></label>
+    <label>Password <input id="userPassword" type="password" /></label>
+    <label>Role
+      <select id="userRole">
+        <option value="provider">provider</option>
+        <option value="scribe">scribe</option>
+        <option value="biller">biller</option>
+        <option value="admin">admin</option>
+      </select>
+    </label>
+    <button id="btnCreateUser">Create User</button>
+  </div>
+
+  <!-- PATIENTS SECTION -->
+  <div class="box">
+    <h2>Patients</h2>
+    <button id="btnLoadPatients">Load Patients</button>
+    <pre id="patientsOutput">No patients loaded yet.</pre>
+
+    <h3>Create Patient (provider/admin)</h3>
+    <label>MRN <input id="patientMrn" /></label>
+    <label>Name <input id="patientName" /></label>
+    <label>DOB (YYYY-MM-DD) <input id="patientDob" /></label>
+    <label>Phone <input id="patientPhone" /></label>
+    <label>Email <input id="patientEmail" /></label>
+    <button id="btnCreatePatient">Create Patient</button>
+  </div>
+
+  <!-- ENCOUNTERS SECTION -->
+  <div class="box">
+    <h2>Encounters</h2>
+    <button id="btnLoadEncounters">Load Encounters</button>
+    <pre id="encountersOutput">No encounters loaded yet.</pre>
+
+    <h3>Create Encounter (provider/scribe/admin)</h3>
+    <p>Hint: first create a User with role "provider" and a Patient, then use their IDs.</p>
+    <label>Patient ID <input id="encPatientId" /></label>
+    <label>Provider ID <input id="encProviderId" /></label>
+    <label>Chief Complaint <input id="encChiefComplaint" /></label>
+    <button id="btnCreateEncounter">Create Encounter (Draft)</button>
+  </div>
+
+  <script>
+    function getToken() {
+      return localStorage.getItem('token') || '';
+    }
+
+    function setToken(token) {
+      localStorage.setItem('token', token);
+    }
+
+    function clearToken() {
+      localStorage.removeItem('token');
+    }
+
+    function setAuthOutput(value) {
+      document.getElementById('authOutput').textContent =
+        (typeof value === 'string') ? value : JSON.stringify(value, null, 2);
+    }
+
+    // Helper: request wrapper that automatically adds Bearer token if present
+    async function apiRequest(url, options = {}) {
+      const token = getToken();
+
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(options.headers || {}),
+      };
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const res = await fetch(url, {
+        ...options,
+        headers,
+      });
+
+      if (res.status === 204) return null;
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        console.error('API error:', data);
+        alert('Error: ' + ((data && data.error) ? data.error : 'See console'));
+        throw new Error((data && data.error) ? data.error : 'Request failed');
+      }
+
+      return data;
+    }
+
+    // AUTH
+    document.getElementById('btnLogin').addEventListener('click', async () => {
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+
+      if (!email || !password) {
+        setAuthOutput('Email and password are required.');
+        return;
+      }
+
+      try {
+        const data = await apiRequest('/api/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ email, password }),
+        });
+
+        if (data && data.token) {
+          setToken(data.token);
+          setAuthOutput({
+            message: 'Login successful. Token stored in localStorage.',
+            user: data.user,
+          });
+        } else {
+          setAuthOutput('Login response did not include a token.');
+        }
+      } catch (e) {
+        // apiRequest already alerts and logs
+      }
+    });
+
+    document.getElementById('btnLogout').addEventListener('click', async () => {
+      try {
+        // Call server logout (optional, JWT is stateless)
+        await apiRequest('/api/auth/logout', { method: 'POST' });
+      } catch (e) {
+        // ignore server logout errors; client token removal is what matters
+      }
+
+      clearToken();
+      setAuthOutput('Logged out. Token removed from localStorage.');
+    });
+
+    document.getElementById('btnMe').addEventListener('click', async () => {
+      try {
+        const me = await apiRequest('/api/auth/me');
+        setAuthOutput(me);
+      } catch (e) {}
+    });
+
+    // USERS
+    document.getElementById('btnLoadUsers').addEventListener('click', async () => {
+      try {
+        const data = await apiRequest('/api/users');
+        document.getElementById('usersOutput').textContent = JSON.stringify(data, null, 2);
+      } catch (e) {}
+    });
+
+    document.getElementById('btnCreateUser').addEventListener('click', async () => {
+      const name = document.getElementById('userName').value;
+      const email = document.getElementById('userEmail').value;
+      const password = document.getElementById('userPassword').value;
+      const role = document.getElementById('userRole').value;
+
+      try {
+        const data = await apiRequest('/api/users', {
+          method: 'POST',
+          body: JSON.stringify({ name, email, password, role }),
+        });
+
+        alert('User created with ID ' + data.id);
+      } catch (e) {}
+    });
+
+    // PATIENTS
+    document.getElementById('btnLoadPatients').addEventListener('click', async () => {
+      try {
+        const data = await apiRequest('/api/patients');
+        document.getElementById('patientsOutput').textContent = JSON.stringify(data, null, 2);
+      } catch (e) {}
+    });
+
+    document.getElementById('btnCreatePatient').addEventListener('click', async () => {
+      const mrn = document.getElementById('patientMrn').value;
+      const name = document.getElementById('patientName').value;
+      const dob = document.getElementById('patientDob').value;
+      const phone = document.getElementById('patientPhone').value;
+      const email = document.getElementById('patientEmail').value;
+
+      try {
+        const data = await apiRequest('/api/patients', {
+          method: 'POST',
+          body: JSON.stringify({ mrn, name, dob, phone, email }),
+        });
+
+        alert('Patient created with ID ' + data.id);
+      } catch (e) {}
+    });
+
+    // ENCOUNTERS
+    document.getElementById('btnLoadEncounters').addEventListener('click', async () => {
+      try {
+        const data = await apiRequest('/api/encounters');
+        document.getElementById('encountersOutput').textContent = JSON.stringify(data, null, 2);
+      } catch (e) {}
+    });
+
+    document.getElementById('btnCreateEncounter').addEventListener('click', async () => {
+      const patientId = parseInt(document.getElementById('encPatientId').value, 10);
+      const providerId = parseInt(document.getElementById('encProviderId').value, 10);
+      const chiefComplaint = document.getElementById('encChiefComplaint').value;
+
+      try {
+        const data = await apiRequest('/api/encounters', {
+          method: 'POST',
+          body: JSON.stringify({ patientId, providerId, chiefComplaint }),
+        });
+
+        alert('Encounter created with ID ' + data.id);
+      } catch (e) {}
+    });
+
+    // On load: show auth status
+    if (getToken()) {
+      setAuthOutput('Token found in localStorage. You can call protected endpoints.');
+    } else {
+      setAuthOutput('Not logged in. Use the login form above.');
+    }
+  </script>
+</body>
+</html>
